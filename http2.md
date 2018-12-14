@@ -1,13 +1,36 @@
 ## http２相关
 
+http2是一个二进制的协议,和http1.1的文本协议是不同的,http1.1使用的是ＣＬＲＦ的分割的文本，
+
+
+![binary_frame_layer](binary_frame_layer.svg)
 ---
 ##### 在HTTP/2 中：
 
-- Stream： 一个双向流，一条连接可以有多个 streams。
-- Message： 也就是逻辑上面的 request，response。
-- Frame:：数据传输的最小单位。每个 Frame 都属于一个特定的 stream 或者整个连接。一个 message 可能有多个 frame 组成。
+- **Stream：** 一个双向流，一个基于稳定的连接的双向的字节流，用来传输y一个或者多个的　**Message**。（A bidirectional flow of bytes within an established connection, which may carry one or more messages. ）
+- **Message：** 一个完整的编号序列的多个　frames来映射基于其上的 request，response。(A complete sequence of frames that map to a logical request or response message. )
+- **Frame：**　数据传输的最小单位。每个 Frame 都属于一个特定的 stream 或者整个连接。一个 message 可能有多个 frame 组成。(The smallest unit of communication in HTTP/2, each containing a frame header, which at a minimum identifies the stream to which the frame belongs. )
+    - All communication is performed over a single TCP connection that can carry any number of bidirectional streams.所有的通讯都通过一个TCP连接以及基于这个连接的多个双向流 **streams**
+    - Each stream has a unique identifier and optional priority information that is used to carry bidirectional messages. 每一个Stream都有一个唯一的标识以及优先级信息，这些都是为在这个双向流上传递　**messages**，
+    - Each message is a logical HTTP message, such as a request, or response, which consists of one or more frames.每一个**message**都是一个逻辑上的ＨＴＴＰ请求,每一个**message**由一个或者多个的**Frame**组成
+    - The frame is the smallest unit of communication that carries a specific type of data—e.g., HTTP headers, message payload, and so on. Frames from different streams may be interleaved and then reassembled via the embedded stream identifier in the header of each frame.**frame**　是数据传输单位，包含header,要传输的数据等等．
+  
+  ![streams.svg](streams.svg)
 
 --- 
+
+**HTTP/2 breaks down the HTTP protocol communication into an exchange of binary-encoded frames, which are then mapped to messages that belong to a particular stream, and all of which are multiplexed within a single TCP connection. This is the foundation that enables all other features and performance optimizations provided by the HTTP/2 protocol.**
+
+**HTTP/2　将原来的文本协议的http 请求，改为了二进制的frames，然后通过frames-messages的映射，将一个frame归属到一个实际的stream中，所有的这些都是多路复用一个TCP连接，这也是HTTP/2能够提供的一些特性的基础**
+
+![request-response.svg](request-response.svg)
+The snapshot in Figure 12-3 captures multiple streams in flight within the same connection: the client is transmitting a DATA frame (stream 5) to the server, while the server is transmitting an interleaved sequence of frames to the client for streams 1 and 3. As a result, there are three parallel streams in flight! 
+这个图说明了多个streams在一个TCP的连接上的如何传输的：双向，多stream，stream内的数据无序
+- Interleave multiple requests in parallel without blocking on any one(多个交错的请求互相没有阻塞)
+- Interleave multiple responses in parallel without blocking on any one(多个交错的响应是没有阻塞的) 
+- Use a single connection to deliver multiple requests and responses in parallel (使用一个连接去并发的发送或者请求多个request-response)
+- Remove unnecessary HTTP/1.x workarounds (see Optimizing for HTTP/1.x), such as concatenated files, image sprites, and domain sharding(移除一些在　http1.1中不必要的请求) 
+- Deliver lower page load times by eliminating unnecessary latency and improving utilization of available network capacity 
 
 ##### Frame Format
 Frame 是 HTTP/2 里面最小的数据传输单位，一个 Frame 定义如下:

@@ -1,4 +1,5 @@
 ## http２相关 [https://hpbn.co/http2/]
+## https://hpbn.co/primer-on-latency-and-bandwidth
 
 http2是一个二进制的协议,和http1.1的文本协议是不同的,http1.1使用的是ＣＬＲＦ的分割的文本，
 

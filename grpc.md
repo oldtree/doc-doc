@@ -291,3 +291,124 @@ gRPC 允许客户端在调用一个远程方法前指定一个最后期限值。
   |Error parsing request protocol buffer| 	GRPC_STATUS_INTERNAL|
 
 #### grpc-go代码分析
+
+* 粗读一遍源代码，然后再参考之前的简单介绍，如何设计一个rpc框架（不用考虑数据的序列化或者反序列化）
+  
+  **clientConn.go**
+  ```go
+  type ClientConn struct {
+    ctx    context.Context//用于此连接的上下文管理
+    cancel context.CancelFunc//通过context来设置的cancel函数
+
+    target       string//用来域名解析的地址名称
+    parsedTarget resolver.Target
+    authority    string
+    dopts        dialOptions//网络拨号连接的选项
+    csMgr        *connectivityStateManager//连接状态的管理者
+
+    balancerBuildOpts balancer.BuildOptions//负载均衡的选项，使用不同的域名解析来达成
+    resolverWrapper   *ccResolverWrapper//域名解析的封装工具
+    blockingpicker    *pickerWrapper
+
+    mu    sync.RWMutex
+    sc    ServiceConfig
+    scRaw string
+    conns map[*addrConn]struct{}
+    // Keepalive parameter can be updated if a GoAway is received.
+    mkp             keepalive.ClientParameters//客户端的心跳以及长连接设置，以及超时设置
+    curBalancerName string//当前的负载均衡器的名称
+    preBalancerName string // previous balancer name.
+    curAddresses    []resolver.Address//当前解析后的名称的地址
+    balancerWrapper *ccBalancerWrapper
+    retryThrottler  atomic.Value//连接重试的频率限制
+
+    channelzID int64 // channelz unique identification number
+    czData     *channelzData
+  }
+  ```
+  这个文件主要是提供给client使用的，包括client的Dail连接建立，每个连接建立后用于管理的context上下文以及以其他必要的内部状态变量
+  ClientConn的方法函数说明：
+  ![ClientConn](clientConn.png)
+
+
+
+  ---
+
+  **dialOptions.go**
+  dialOptions configure a Dial call. dialOptions are set by the DialOption values passed to Dial.
+  这个是源代码的解释：
+  dialOptions用来配置每一个Dail连接
+  ```go
+  type dialOptions struct {
+    unaryInt    UnaryClientInterceptor //用于客户端的一元线性的函数拦截器
+    streamInt   StreamClientInterceptor　//用于客户端的流式处理器
+    cp          Compressor　　　　　　　　　//压缩方式
+    dc          Decompressor　　　　　　　//解压方式
+    bs          backoff.Strategy　　　　　//在负载均衡时的策略设置　
+    block       bool　　　　　　　　　　　　//是否非阻塞的建立连接　　
+    insecure    bool　　　　　　　　　　　　//是否使用传输层的安全加密机制　　　
+    timeout     time.Duration　　　　　　　//连接超时设置
+    scChan      <-chan ServiceConfig　　　//配置文件更新的channel
+    authority   string                   //鉴权的信息
+    copts       transport.ConnectOptions　//用于transport的连接设置　
+    callOptions []CallOption
+    // This is used by v1 balancer dial option WithBalancer to support v1
+    // balancer, and also by WithBalancerName dial option.
+    balancerBuilder balancer.Builder　　//负载均衡构建器
+    // This is to support grpclb.
+    resolverBuilder      resolver.Builder　//域名解析构建器
+    waitForHandshake     bool
+    channelzParentID     int64
+    disableServiceConfig bool
+    disableRetry         bool
+  }
+  ```
+  默认的提供了一个　EmptyDialOption　的选项:
+  EmptyDialOption does not alter the dial configuration. It can be embedded in another structure to build custom dial options.
+  注释说明可以用来构建自己自定义的连接建立时的选项
+
+  在这个文件中，有一个用来为各个设置函数作为直接的ClientConn操作函数的封装：
+  ```go
+
+    // funcDialOption wraps a function that modifies dialOptions into an
+    // implementation of the DialOption interface.
+    type funcDialOption struct {
+      f func(*dialOptions)
+    }
+
+    func (fdo *funcDialOption) apply(do *dialOptions) {
+      fdo.f(do)
+    }
+
+    func newFuncDialOption(f func(*dialOptions)) *funcDialOption {
+      return &funcDialOption{
+        f: f,
+      }
+    }
+    .
+    .
+    .
+    .
+    .
+    .
+    func withContextDialer(f func(context.Context, string) (net.Conn, error)) DialOption {
+      return newFuncDialOption(func(o *dialOptions) {
+        o.copts.Dialer = f
+      })
+    }
+    func WithDialer(f func(string, time.Duration) (net.Conn, error)) DialOption {
+      return withContextDialer(
+        func(ctx context.Context, addr string) (net.Conn, error) {
+          if deadline, ok := ctx.Deadline(); ok {
+            return f(addr, deadline.Sub(time.Now()))
+          }
+          return f(addr, 0)
+        })
+    }
+  ```
+  像如下图的函数都是使用这个函数来操作作为参数的　*dialOptions　变量的:
+  ![dailOption](dailoptions.png)
+  ---
+  **pickerWrapper.go**
+
+* 再分析GRPC的源代码

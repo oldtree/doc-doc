@@ -62,8 +62,12 @@ Frame 是 HTTP/2 里面最小的数据传输单位，一个 Frame 定义如下:
 - Frame Payload：根据不同 Type 有不同的格式。
 
 
-##### frame type 
+### frame type 
 
+The basic protocol unit in HTTP/2 is a frame (Section 4.1). Each frame type serves a different purpose. For example, HEADERS and DATA frames form the basis of HTTP requests and responses (Section 8.1); other frame types like SETTINGS, WINDOW_UPDATE, and PUSH_PROMISE are used in support of other HTTP/2 features.
+
+HEADERS,DATA　类型的frame是用来传输通用数据使用的
+SETTINGS，WINDOW_UPDATE，PUSH_PROMISE类型的frame是用来支持http/2的功能
 
 - DATA
     Used to transport HTTP message bodies 

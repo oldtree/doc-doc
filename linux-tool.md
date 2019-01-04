@@ -1,5 +1,7 @@
 ## linux tool
 
+![language-war](language-war.jpeg)
+
 使用 find 命令在 Linux 中搜索文件和文件夹
 
 它允许用户根据大小、名称、所有者、组、类型、权限、日期和其他条件执行所有类型的文件搜索。

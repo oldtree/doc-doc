@@ -66,6 +66,7 @@ producer发送消息到broker时，会根据分区算法将其存储到哪一个
 * partition和key 都为指定，使用轮询选出一个partition
   
 ##### 写数据流程
+![partition.jpeg](partition.jpeg)
 ![appendlog.jpeg](appendlog.jpeg)
 
     1:producer先从zookeeper的"/brokers/.../state"节点找到该 partition 的leader
@@ -74,6 +75,7 @@ producer发送消息到broker时，会根据分区算法将其存储到哪一个
     4:leader收到所有ISR(in-sync replicas) 中的 replica的ACK后向 producer发送ACK
     5:物理上把topic分成一个或多个partition，每个partition物理上对应一个文件夹（该文件夹存储该 partition 的所有消息和索引文件）
     6:partition中的每条Message包含了以下三个属性： offset:MessageSize:data
+    7:topic可以有若干个分区，且分区可以动态修改，但是只允许增加不允许减少。每个分区中的消息是有序的。各个分区之间的消息是无序的。新消息采用追加的方式写入，这种顺序写入方式，从而使kafka的吞吐能力非常强大
 
 ##### 读取
 **分段**:Kafka 解决查询效率的手段之一是将数据文件分段，比如有 100 条 Message，它们的 offset 是从 0 到 99。假设将数据文件分成 5 段，第一段为 0-19，第二段为 20-39，以此类推，每段放在一个单独的数据文件里面，数据文件以该段中最小的 offset 命名。这样在查找指定 offset 的 Message 的时候，用二分查找就可以定位到该 Message 在哪个段中。

@@ -70,3 +70,5 @@ which -a vi sudo
 whereis vi
 vi: /usr/bin/vi /usr/share/man/man1/vi.1p.gz /usr/share/man/man1/vi.1.gz
 ```
+
+---

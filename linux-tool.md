@@ -179,3 +179,87 @@ H/W path       Device       Class          Description
 ~$ dmesg | grep "Memory"
 [    0.000000] Memory: 8113248K/8352408K available (8319K kernel code, 1322K rwdata, 4016K rodata, 1512K init, 1316K bss, 239160K reserved, 0K cma-reserved)
 ```
+### 进程内存分配
+可以通过读取 /proc/pid_of_process/maps 文件来检查 Linux 进程中的内存区域;
+**经典内存布局:**
+![class-mem](class-mem.png)
+可以使用 nm 和 objdump 命令去检查二进制镜像，去显示它们的符号、地址、段等等
+
+* nm
+```shell
+$ nm -help
+Usage: nm [option(s)] [file(s)]
+ List symbols in [file(s)] (a.out by default).
+ The options are:
+  -a, --debug-syms       Display debugger-only symbols
+  -A, --print-file-name  Print name of the input file before every symbol
+  -B                     Same as --format=bsd
+  -C, --demangle[=STYLE] Decode low-level symbol names into user-level names
+                          The STYLE, if specified, can be `auto` (the default),
+                          `gnu`, `lucid`, `arm`, `hp`, `edg`, `gnu-v3`, `java`
+                          or `gnat`
+      --no-demangle      Do not demangle low-level symbol names
+  -D, --dynamic          Display dynamic symbols instead of normal symbols
+      --defined-only     Display only defined symbols
+  -e                     (ignored)
+  -f, --format=FORMAT    Use the output format FORMAT.  FORMAT can be `bsd`,
+                           `sysv` or `posix`.  The default is `bsd`
+  -g, --extern-only      Display only external symbols
+  -l, --line-numbers     Use debugging information to find a filename and
+                           line number for each symbol
+  -n, --numeric-sort     Sort symbols numerically by address
+  -o                     Same as -A
+  -p, --no-sort          Do not sort the symbols
+  -P, --portability      Same as --format=posix
+  -r, --reverse-sort     Reverse the sense of the sort
+      --plugin NAME      Load the specified plugin
+  -S, --print-size       Print size of defined symbols
+  -s, --print-armap      Include index for symbols from archive members
+      --size-sort        Sort symbols by size
+      --special-syms     Include special symbols in the output
+      --synthetic        Display synthetic symbols as well
+  -t, --radix=RADIX      Use RADIX for printing symbol values
+      --target=BFDNAME   Specify the target object format as BFDNAME
+  -u, --undefined-only   Display only undefined symbols
+  -X 32_64               (ignored)
+  @FILE                  Read options from FILE
+  -h, --help             Display this information
+  -V, --version          Display this program's version number
+
+```
+
+* objdump
+```shell
+~$ objdump help
+Usage: objdump <option(s)> <file(s)>
+ Display information from object <file(s)>.
+ At least one of the following switches must be given:
+  -a, --archive-headers    Display archive header information
+  -f, --file-headers       Display the contents of the overall file header
+  -p, --private-headers    Display object format specific file header contents
+  -P, --private=OPT,OPT... Display object format specific contents
+  -h, --[section-]headers  Display the contents of the section headers
+  -x, --all-headers        Display the contents of all headers
+  -d, --disassemble        Display assembler contents of executable sections
+  -D, --disassemble-all    Display assembler contents of all sections
+  -S, --source             Intermix source code with disassembly
+  -s, --full-contents      Display the full contents of all sections requested
+  -g, --debugging          Display debug information in object file
+  -e, --debugging-tags     Display debug information using ctags style
+  -G, --stabs              Display (in raw form) any STABS info in the file
+  -W[lLiaprmfFsoRt] or
+  --dwarf[=rawline,=decodedline,=info,=abbrev,=pubnames,=aranges,=macro,=frames,
+          =frames-interp,=str,=loc,=Ranges,=pubtypes,
+          =gdb_index,=trace_info,=trace_abbrev,=trace_aranges,
+          =addr,=cu_index]
+                           Display DWARF info in the file
+  -t, --syms               Display the contents of the symbol table(s)
+  -T, --dynamic-syms       Display the contents of the dynamic symbol table
+  -r, --reloc              Display the relocation entries in the file
+  -R, --dynamic-reloc      Display the dynamic relocation entries in the file
+  @<file>                  Read options from <file>
+  -v, --version            Display this program's version number
+  -i, --info               List object formats and architectures supported
+  -H, --help               Display this information
+```
+

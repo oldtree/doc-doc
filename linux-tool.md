@@ -262,4 +262,154 @@ Usage: objdump <option(s)> <file(s)>
   -i, --info               List object formats and architectures supported
   -H, --help               Display this information
 ```
+---
 
+### Linux 网络监视器
+用 iftop、Nethogs 和 vnstat 了解更多关于你的网络连接.
+你可以通过这三个 Linux 网络命令，了解有关你网络连接的大量信息。iftop 通过进程号跟踪网络连接，Nethogs 可以快速显示哪个在占用你的带宽，而 vnstat 作为一个很好的轻量级守护进程运行，可以随时随地记录你的使用情况。
+
+## iftop
+```shell
+~$ sudo iftop
+interface: eth0
+IP address is: 10.9.97.0
+MAC address is: 30:9c:23:29:06:f8
+~$ sudo iftop help
+iftop: found arguments following options
+*** some options have changed names since v0.9 ***
+iftop: display bandwidth usage on an interface by host
+
+Synopsis: iftop -h | [-npblNBP] [-i interface] [-f filter code]
+                               [-F net/mask] [-G net6/mask6]
+
+   -h                  display this message
+   -n                  don't do hostname lookups
+   -N                  don't convert port numbers to services
+   -p                  run in promiscuous mode (show traffic between other
+                       hosts on the same network segment)
+   -b                  don't display a bar graph of traffic
+   -B                  Display bandwidth in bytes
+   -i interface        listen on named interface
+   -f filter code      use filter code to select packets to count
+                       (default: none, but only IP packets are counted)
+   -F net/mask         show traffic flows in/out of IPv4 network
+   -G net6/mask6       show traffic flows in/out of IPv6 network
+   -l                  display and count link-local IPv6 traffic (default: off)
+   -P                  show ports as well as hosts
+   -m limit            sets the upper limit for the bandwidth scale
+   -c config file      specifies an alternative configuration file
+
+iftop, version 1.0pre2
+
+
+```
+
+```shell
+~$ dig A pandora.com
+
+; <<>> DiG 9.9.5-3ubuntu0.17-Ubuntu <<>> A pandora.com
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 32657
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 4000
+;; QUESTION SECTION:
+;pandora.com.			IN	A
+
+;; ANSWER SECTION:
+pandora.com.		3599	IN	A	208.85.40.20
+
+;; Query time: 169 msec
+;; SERVER: 172.30.1.104#53(172.30.1.104)
+;; WHEN: Fri Jan 11 10:17:56 CST 2019
+;; MSG SIZE  rcvd: 56
+```
+
+## Nethogs
+
+当想要快速了解谁占用了你的带宽时，Nethogs 是快速和容易的。以 root 身份运行，并指定要监听的接口。
+
+```shell
+~$ nethogs -h
+usage: nethogs [-V] [-b] [-d seconds] [-t] [-p] [device [device [device ...]]]
+		-V : prints version.
+		-d : delay for update refresh rate in seconds. default is 1.
+		-t : tracemode.
+		-b : bughunt mode - implies tracemode.
+		-p : sniff in promiscious mode (not recommended).
+		device : device(s) to monitor. default is eth0
+
+When nethogs is running, press:
+ q: quit
+ m: switch between total and kb/s mode
+
+$ sudo nethogs wlan0
+
+NetHogs version 0.8.1
+
+PID USER   PROGRAM              DEV    SENT   RECEIVED       
+7690 carla /usr/lib/firefox     wlan0 12.494 556.580 KB/sec
+5648 carla .../chromium-browser wlan0  0.052 0.038 KB/sec
+TOTAL                                 12.546 556.618 KB/sec
+```
+
+## vnstat
+vnstat 是最容易使用的网络数据收集器
+```shell
+~$ vnstat --help
+ vnStat 1.11 by Teemu Toivola <tst at iki dot fi>
+
+         -q,  --query          query database
+         -h,  --hours          show hours
+         -d,  --days           show days
+         -m,  --months         show months
+         -w,  --weeks          show weeks
+         -t,  --top10          show top10
+         -s,  --short          use short output
+         -u,  --update         update database
+         -i,  --iface          select interface (default: eth0)
+         -?,  --help           short help
+         -v,  --version        show version
+         -tr, --traffic        calculate traffic
+         -ru, --rateunit       swap configured rate unit
+         -l,  --live           show transfer rate in real time
+
+See also "--longhelp" for complete options list and "man vnstat".
+```
+## history
+如何轻松记住 `Linux` 命令
+首先要介绍的是命令行工具 `history`，它能帮你记住那些你曾经用过的命令。包括应用最广泛的 `Bash` 在内的大多数 `Linux shell`，都会创建一个历史文件来包含那些你输入过的命令。
+如果你用的是 Bash，这个历史文件就是 `/home/XXXXX/.bash_history`
+```shell
+~$ history
+ 1995  tmux
+ 1996  lsb_release -a
+ 1997  lsb_release 
+ 1998  cat /etc/lsb-release
+ 1999  cat /etc/issue
+ 2000  sudo iftop
+ 2001  iftop
+ 2002  sudo apt-get install iftop
+ 2003  sudo iftop
+ 2004  sudo iftop help
+ 2005  sudo iftop -i wlan0
+ 2006  sudo iftop -i eth0
+ 2007  history
+ 2008  apropos
+ 2009  apropos go
+ 2010  apropos golang
+ 2011  apropos make
+ 2012  apropos minikube
+ 2013  apropos clang
+ 2014  apropos man
+ 2015  history
+ 2016  history -h
+ 2017  history help
+ 2018  history ssh
+ 2019  history go
+ 2020  history
+```
+
+## ftrace：跟踪你的内核函数，ftrace-cmd

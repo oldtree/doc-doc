@@ -413,3 +413,117 @@ See also "--longhelp" for complete options list and "man vnstat".
 ```
 
 ## ftrace：跟踪你的内核函数，ftrace-cmd
+
+##  Linux 上的网络信息嗅探工具
+
+在计算机网络中，数据是暴露的，因为数据包传输是无法隐藏的，所以让我们来使用 `whois`、`dig`、`nmcli` 和 `nmap` 这四个工具来嗅探网络吧
+
+#### dig
+```shell
+~$ dig help
+
+; <<>> DiG 9.9.5-3ubuntu0.17-Ubuntu <<>> help
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: SERVFAIL, id: 28393
+;; flags: qr rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 4000
+;; QUESTION SECTION:
+;help.				IN	A
+
+;; Query time: 1 msec
+;; SERVER: 172.30.1.104#53(172.30.1.104)
+;; WHEN: Fri Jan 11 11:45:58 CST 2019
+;; MSG SIZE  rcvd: 33
+```
+
+```shell
+~$ dig
+
+; <<>> DiG 9.9.5-3ubuntu0.17-Ubuntu <<>>
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 9703
+;; flags: qr rd ra; QUERY: 1, ANSWER: 13, AUTHORITY: 0, ADDITIONAL: 27
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 4000
+;; QUESTION SECTION:
+;.				IN	NS
+
+;; ANSWER SECTION:
+.			449960	IN	NS	j.root-servers.net.
+.			449960	IN	NS	m.root-servers.net.
+.			449960	IN	NS	c.root-servers.net.
+.			449960	IN	NS	b.root-servers.net.
+.			449960	IN	NS	d.root-servers.net.
+.			449960	IN	NS	k.root-servers.net.
+.			449960	IN	NS	h.root-servers.net.
+.			449960	IN	NS	f.root-servers.net.
+.			449960	IN	NS	g.root-servers.net.
+.			449960	IN	NS	l.root-servers.net.
+.			449960	IN	NS	e.root-servers.net.
+.			449960	IN	NS	i.root-servers.net.
+.			449960	IN	NS	a.root-servers.net.
+
+;; ADDITIONAL SECTION:
+j.root-servers.net.	85610	IN	A	192.58.128.30
+j.root-servers.net.	85610	IN	AAAA	2001:503:c27::2:30
+m.root-servers.net.	85610	IN	A	202.12.27.33
+m.root-servers.net.	85610	IN	AAAA	2001:dc3::35
+c.root-servers.net.	85610	IN	A	192.33.4.12
+c.root-servers.net.	85610	IN	AAAA	2001:500:2::c
+b.root-servers.net.	85610	IN	A	199.9.14.201
+b.root-servers.net.	85610	IN	AAAA	2001:500:200::b
+d.root-servers.net.	85610	IN	A	199.7.91.13
+d.root-servers.net.	85610	IN	AAAA	2001:500:2d::d
+k.root-servers.net.	85610	IN	A	193.0.14.129
+k.root-servers.net.	85610	IN	AAAA	2001:7fd::1
+h.root-servers.net.	85610	IN	A	198.97.190.53
+h.root-servers.net.	85610	IN	AAAA	2001:500:1::53
+f.root-servers.net.	85610	IN	A	192.5.5.241
+f.root-servers.net.	85610	IN	AAAA	2001:500:2f::f
+g.root-servers.net.	85610	IN	A	192.112.36.4
+g.root-servers.net.	85610	IN	AAAA	2001:500:12::d0d
+l.root-servers.net.	85610	IN	A	199.7.83.42
+l.root-servers.net.	85610	IN	AAAA	2001:500:9f::42
+e.root-servers.net.	85610	IN	A	192.203.230.10
+e.root-servers.net.	85610	IN	AAAA	2001:500:a8::e
+i.root-servers.net.	85610	IN	A	192.36.148.17
+i.root-servers.net.	85610	IN	AAAA	2001:7fe::53
+a.root-servers.net.	85610	IN	A	198.41.0.4
+a.root-servers.net.	85610	IN	AAAA	2001:503:ba3e::2:30
+
+```
+使用 `dig` 命令比较从不同的域名服务器返回的查询结果，去除陈旧的信息。域名服务器记录缓存各地的解析信息，并且不同的域名服务器有不同的刷新间隔。
+
+```shell
+dig baidu.com
+
+; <<>> DiG 9.9.5-3ubuntu0.17-Ubuntu <<>> baidu.com
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 18743
+;; flags: qr rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 4000
+;; QUESTION SECTION:
+;baidu.com.			IN	A
+
+;; ANSWER SECTION:
+baidu.com.		57	IN	A	123.125.115.110
+baidu.com.		57	IN	A	220.181.57.216
+
+;; Query time: 1 msec
+;; SERVER: 172.30.1.104#53(172.30.1.104)
+;; WHEN: Fri Jan 11 11:47:24 CST 2019
+;; MSG SIZE  rcvd: 70
+
+```
+#### nmcli
+```shell
+$ nmcli dev show | grep DNS
+```

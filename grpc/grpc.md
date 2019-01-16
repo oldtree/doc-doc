@@ -7,7 +7,7 @@ gRPC 通常有四种模式，unary，client streaming，server streaming 以及 
 - 在客户侧，客户端有一个存根实现了服务端同样的方法。客户端可以在本地存根调用这些方法，用合适的 protocol buffer 消息类型封装这些参数— gRPC 来负责发送请求给服务端并返回服务端 protocol buffer 响应。
 - ![请求－响应模型](shortcut.png)
 
-##### Request
+### Request
 
 gRPC 的 request 通常包含 Request-Headers, 0 或者多个 Length-Prefixed-Message 以及 EOS。
 
@@ -17,7 +17,7 @@ Length-Prefixed-Message 主要在 DATA frame 里面派发，它有一个 Compres
 
 EOS（end-of-stream） 会在最后的 DATA frame 里面带上了 END_STREAM 这个 flag。用来表示 stream 不会在发送任何数据，可以关闭了。
 
-##### Response
+### Response
 
 Response 主要包含 Response-Headers，0 或者多个 Length-Prefixed-Message 以及 Trailers。如果遇到了错误，也可以直接返回 Trailers-Only。
 
@@ -27,7 +27,7 @@ HTTP-Status 就是我们通常的 HTTP 200，301，400 这些，很通用就不�
 
 如果在最后收到的 HEADERS frame 里面，带上了 Trailers，并且有 END_STREAM 这个 flag，那么就意味着 response 的 EOS。
 
-##### Protobuf
+### Protobuf
 
 gRPC 的 service 接口是基于 protobuf 定义的，我们可以非常方便的将 service 与 HTTP/2 关联起来。
 
@@ -326,8 +326,10 @@ gRPC 允许客户端在调用一个远程方法前指定一个最后期限值。
     czData     *channelzData
   }
   ```
+
   这个文件主要是提供给client使用的，包括client的Dail连接建立，每个连接建立后用于管理的context上下文以及以其他必要的内部状态变量
   ClientConn的方法函数说明：
+
   ![ClientConn](clientConn.png)
 
 

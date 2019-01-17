@@ -758,3 +758,149 @@ type loggerT struct {
 }
 ```
 ## health检测以及相关
+
+分为　`client.go` 和　`server.go`　两个检测方式
+
+server中实现　implements `service Health`这些接口，在client.go中根据制定好的protoc协议来进行健康检查访问
+
+## keepalive 
+// Package keepalive defines configurable parameters for point-to-point healthcheck.
+keepalive 定义了可配置的用于点对点健康监测的参数
+```shell
+// ClientParameters is used to set keepalive parameters on the client-side.
+// These configure how the client will actively probe to notice when a
+// connection is broken and send pings so intermediaries will be aware of the
+// liveness of the connection. Make sure these parameters are set in
+// coordination with the keepalive policy on the server, as incompatible
+// settings can result in closing of connection.
+type ClientParameters struct {
+	// After a duration of this time if the client doesn't see any activity it
+	// pings the server to see if the transport is still alive.
+	Time time.Duration // The current default value is infinity.
+	// After having pinged for keepalive check, the client waits for a duration
+	// of Timeout and if no activity is seen even after that the connection is
+	// closed.
+	Timeout time.Duration // The current default value is 20 seconds.
+	// If true, client sends keepalive pings even with no active RPCs. If false,
+	// when there are no active RPCs, Time and Timeout will be ignored and no
+	// keepalive pings will be sent.
+	PermitWithoutStream bool // false by default.
+}
+
+// ServerParameters is used to set keepalive and max-age parameters on the
+// server-side.
+type ServerParameters struct {
+	// MaxConnectionIdle is a duration for the amount of time after which an
+	// idle connection would be closed by sending a GoAway. Idleness duration is
+	// defined since the most recent time the number of outstanding RPCs became
+	// zero or the connection establishment.
+	MaxConnectionIdle time.Duration // The current default value is infinity.
+	// MaxConnectionAge is a duration for the maximum amount of time a
+	// connection may exist before it will be closed by sending a GoAway. A
+	// random jitter of +/-10% will be added to MaxConnectionAge to spread out
+	// connection storms.
+	MaxConnectionAge time.Duration // The current default value is infinity.
+	// MaxConnectionAgeGrace is an additive period after MaxConnectionAge after
+	// which the connection will be forcibly closed.
+	MaxConnectionAgeGrace time.Duration // The current default value is infinity.
+	// After a duration of this time if the server doesn't see any activity it
+	// pings the client to see if the transport is still alive.
+	Time time.Duration // The current default value is 2 hours.
+	// After having pinged for keepalive check, the server waits for a duration
+	// of Timeout and if no activity is seen even after that the connection is
+	// closed.
+	Timeout time.Duration // The current default value is 20 seconds.
+}
+```
+这个几个参数分为server端和client端，这些参数都是很重要的，尤其在一些性能或者一些莫名其妙的bug中都可以使用到,超时机制以及存活检测的机制，以及server执行强制措施的参数设置。
+
+## metadata 请求中设置的一些元数据参数
+
+```shell
+// MD is a mapping from metadata keys to values. Users should use the following
+// two convenience functions New and Pairs to generate MD.
+type MD map[string][]string
+```
+以及存储在context中的meta数据的更新读取设置操作,在meta数据中的存储都是**小写**的格式
+![meta.png](meta.png)
+
+
+## naming(废弃)--->resolver
+
+## peer
+Package peer defines various peer information associated with RPCs and corresponding utils.
+
+peer包定义了服务节点或者请求节点的一些和RPC相关的参数
+```shell
+// Peer contains the information of the peer for an RPC, such as the address
+// and authentication information.
+type Peer struct {
+	// Addr is the peer address.
+	Addr net.Addr
+	// AuthInfo is the authentication information of the transport.
+	// It is nil if there is no transport security being used.
+	AuthInfo credentials.AuthInfo
+}
+
+```
+
+## Reflection
+Package reflection implements server reflection service.
+reflection定义了rpc服务中使用的服务所提供的功能函数的注册功能，基于go语言原生的reflection来做的，对外提供可用的服务函数功能
+
+## resolver
+Package resolver defines APIs for name resolution in gRPC.
+All APIs in this package are experimental.
+resolver定义了gRPC中的名称解析服务，所有的API都是试验性尝试的
+resolver.go文件定义了对外的接口，gRPC只需实现这些接口就ok;
+默认支持了三种域名解析的方法：
+
+* dns resolver
+* manually resolver
+* pass-through resolver
+
+这些已经实现了resolver接口，并在init函数中默认注册自己了
+
+![resolver.png](resolver.png)
+
+## stats
+Package stats is for collecting and reporting various network and RPC stats.
+This package is for monitoring purpose only. All fields are read-only.
+All APIs are experimental.
+stats用来收集并报告gRpc的各种信息以及连接的信息
+```shell
+// RPCStats contains stats information about RPCs.
+type RPCStats interface {
+	isRPCStats()
+	// IsClient returns true if this RPCStats is from client side.
+	IsClient() bool
+}
+.
+.
+.
+.
+.
+// ConnStats contains stats information about connections.
+type ConnStats interface {
+	isConnStats()
+	// IsClient returns true if this ConnStats is from client side.
+	IsClient() bool
+}
+```
+如上的两个接口定义：
+
+* RPCStats　rpc的状态信息
+* ConnStats　连接的信息
+
+通过下图可以了解到，其余的结构体都是对这两个接口的实现，这两个接口更偏向于契约性的定义:
+**RPCStats**
+
+![stats1.png](stats1.png)
+
+**ConnStats**
+
+![stats2.png](stat2.png)
+
+## stress　一个基于　interop的压力测试示例
+
+# gRPC中的包这里简单描述完了

@@ -112,7 +112,8 @@ func (cc *ClientConn) Invoke
 
 ## clientconn.go
 
-在这个文件中定义了代表客户端连接的结构体:
+在这个文件中定义了代表客户端连接的结构体
+`ClientConn`的定义：
 ```go
 // ClientConn represents a client connection to an RPC server.
 type ClientConn struct {
@@ -212,3 +213,61 @@ var (
 	errCredentialsConflict = errors.New("grpc: transport credentials are set for an insecure connection (grpc.WithTransportCredentials() and grpc.WithInsecure() are both called)")
 )
 ```
+在这个文件中，定义了一个这样的函数：
+```go
+// newAddrConn creates an addrConn for addrs and adds it to cc.conns.
+//
+// Caller needs to make sure len(addrs) > 0.
+func (cc *ClientConn) newAddrConn(addrs []resolver.Address, opts balancer.NewSubConnOptions) (*addrConn, error)
+```
+根据一个地址`addrs`列表创建一个对后端的连接`addrConn`,然后把这个连接添加到`ClientConn`的成员变量`conns  map[*addrConn]struct{}`中
+
+
+addrConn的定义：
+```go
+// addrConn is a network connection to a given address.
+type addrConn struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	cc     *ClientConn
+	dopts  dialOptions
+	acbw   balancer.SubConn
+	scopts balancer.NewSubConnOptions
+
+	// transport is set when there's a viable transport (note: ac state may not be READY as LB channel
+	// health checking may require server to report healthy to set ac to READY), and is reset
+	// to nil when the current transport should no longer be used to create a stream (e.g. after GoAway
+	// is received, transport is closed, ac has been torn down).
+	transport transport.ClientTransport // The current transport.
+
+	mu      sync.Mutex
+	curAddr resolver.Address   // The current address.
+	addrs   []resolver.Address // All addresses that the resolver resolved to.
+
+	// Use updateConnectivityState for updating addrConn's connectivity state.
+	state connectivity.State
+
+	tearDownErr error // The reason this addrConn is torn down.
+
+	backoffIdx   int // Needs to be stateful for resetConnectBackoff.
+	resetBackoff chan struct{}
+
+	channelzID         int64 // channelz unique identification number.
+	czData             *channelzData
+	healthCheckEnabled bool
+}
+```
+`addrConn`中定义的这个方法：
+connect starts creating a transport.It does nothing if the ac is not IDLE.
+```go
+func (ac *addrConn) connect() error{
+    ...
+    // Start a goroutine connecting to the server asynchronously.
+	go ac.resetTransport()
+    ...
+}
+```
+`addrConn`的这个函数实现的xxx的接口定义，用来触发实际的连接操作的
+
+

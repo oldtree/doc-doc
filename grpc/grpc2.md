@@ -59,3 +59,35 @@ type acBalancerWrapper struct {
 
 ## balancer.go
 这个文件是原来的`balancer`抽象接口，现在已经废弃，建议使用`balancer`这个包的定义:Deprecated: please use package balancer. 
+
+
+----
+
+## balancer_v1_wrapper.go
+
+一个　balancer的实现:
+
+![balancer.png](balancer.png)
+
+```shell
+type balancerWrapper struct {
+	balancer  Balancer // The v1 balancer.
+	pickfirst bool
+
+	cc         balancer.ClientConn
+	targetAddr string // Target without the scheme.
+
+	mu     sync.Mutex
+	conns  map[resolver.Address]balancer.SubConn
+	connSt map[balancer.SubConn]*scState
+	// This channel is closed when handling the first resolver result.
+	// lbWatcher blocks until this is closed, to avoid race between
+	// - NewSubConn is created, cc wants to notify balancer of state changes;
+	// - Build hasn't return, cc doesn't have access to balancer.
+	startCh chan struct{}
+
+	// To aggregate the connectivity state.
+	csEvltr *balancer.ConnectivityStateEvaluator
+	state   connectivity.State
+}
+```

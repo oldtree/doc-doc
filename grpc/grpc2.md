@@ -269,5 +269,85 @@ func (ac *addrConn) connect() error{
 }
 ```
 `addrConn`的这个函数实现的xxx的接口定义，用来触发实际的连接操作的
+```go
+// createTransport creates a connection to one of the backends in addrs. It
+// sets ac.transport in the success case, or it returns an error if it was
+// unable to successfully create a transport.
+//
+// If waitForHandshake is enabled, it blocks until server preface arrives.
+func (ac *addrConn) createTransport(addr resolver.Address, copts transport.ConnectOptions, connectDeadline time.Time, reconnect *grpcsync.Event, prefaceReceived chan struct{}) (transport.ClientTransport, error) {
+    ...
+    newTr, err := transport.NewClientTransport(connectCtx, ac.cc.ctx, target, copts, onPrefaceReceipt, onGoAway, onClose)
+}
+```
 
+---
+## codec.go
+这个文件定义了序列化相关的接口：
+```go
+// baseCodec contains the functionality of both Codec and encoding.Codec, but
+// omits the name/string, which vary between the two and are not needed for
+// anything besides the registry in the encoding package.
+type baseCodec interface {
+	Marshal(v interface{}) ([]byte, error)
+	Unmarshal(data []byte, v interface{}) error
+}
+
+var _ baseCodec = Codec(nil)
+var _ baseCodec = encoding.Codec(nil)
+
+// Codec defines the interface gRPC uses to encode and decode messages.
+// Note that implementations of this interface must be thread safe;
+// a Codec's methods can be called from concurrent goroutines.
+//
+// Deprecated: use encoding.Codec instead.
+type Codec interface {
+	// Marshal returns the wire format of v.
+	Marshal(v interface{}) ([]byte, error)
+	// Unmarshal parses the wire format into v.
+	Unmarshal(data []byte, v interface{}) error
+	// String returns the name of the Codec implementation.  This is unused by
+	// gRPC.
+	String() string
+}
+```
+---
+
+## dialoptions.go
+这个文件定义了用来进行建立连接的一些可以进行设置的参数：
+```go
+// dialOptions configure a Dial call. dialOptions are set by the DialOption
+// values passed to Dial.
+type dialOptions struct {
+	unaryInt    UnaryClientInterceptor
+	streamInt   StreamClientInterceptor
+	cp          Compressor
+	dc          Decompressor
+	bs          backoff.Strategy
+	block       bool
+	insecure    bool
+	timeout     time.Duration
+	scChan      <-chan ServiceConfig
+	authority   string
+	copts       transport.ConnectOptions
+	callOptions []CallOption
+	// This is used by v1 balancer dial option WithBalancer to support v1
+	// balancer, and also by WithBalancerName dial option.
+	balancerBuilder balancer.Builder
+	// This is to support grpclb.
+	resolverBuilder      resolver.Builder
+	reqHandshake         envconfig.RequireHandshakeSetting
+	channelzParentID     int64
+	disableServiceConfig bool
+	disableRetry         bool
+	disableHealthCheck   bool
+	healthCheckFunc      internal.HealthChecker
+}
+
+// DialOption configures how we set up the connection.
+type DialOption interface {
+	apply(*dialOptions)
+}
+```
+`DialOption`这个通用的接口定义
 

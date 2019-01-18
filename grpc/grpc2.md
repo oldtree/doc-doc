@@ -348,6 +348,22 @@ type dialOptions struct {
 type DialOption interface {
 	apply(*dialOptions)
 }
-```
-`DialOption`这个通用的接口定义
+...
+type funcDialOption struct {
+	f func(*dialOptions)
+}
 
+func (fdo *funcDialOption) apply(do *dialOptions) {
+	fdo.f(do)
+}
+
+func newFuncDialOption(f func(*dialOptions)) *funcDialOption {
+	return &funcDialOption{
+		f: f,
+	}
+}
+
+```
+`DialOption`这个通用的接口定义,然后通过`funcDialOption`包装一层，这样其它函数构建一个`DialOption`时只需要使用`newFuncDialOption`这个函数生成就好
+
+![newFuncDialOption.png](newFuncDialOption.png)

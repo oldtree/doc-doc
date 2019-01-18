@@ -81,7 +81,7 @@ grpc是一个跨平台的基于HTTP/2的rpc框架
 ##### 服务定义
 gRPC 基于如下思想：定义一个服务， 指定其可以被远程调用的方法及其参数和返回类型。gRPC 默认使用 protocol buffers 作为接口定义语言，来描述服务接口和有效载荷消息结构。如果有需要的话，可以使用其他替代方案。
 
-```shell
+```go
 service HelloService {
   rpc SayHello (HelloRequest) returns (HelloResponse);
 }
@@ -97,7 +97,7 @@ message HelloResponse {
 
 在gRPC 允许你定义四类服务方法：
 - 单项 RPC，即客户端发送一个请求给服务端，从服务端获取一个应答，就像一次普通的函数调用。
-  ```shell
+  ```go
   rpc SayHello(HelloRequest) returns (HelloResponse){
   }
   ```
@@ -107,19 +107,19 @@ message HelloResponse {
   - 一旦服务端获得客户端的请求信息，就会做所需的任何工作来创建或组装对应的响应。如果成功的话，这个响应会和包含状态码以及可选的状态信息等状态明细及可选的追踪信息返回给客户端 。假如状态是 OK 的话，客户端会得到应答，这将结束客户端的调用。
 
 - 服务端流式 RPC，即客户端发送一个请求给服务端，可获取一个数据流用来读取一系列消息。客户端从返回的数据流里一直读取直到没有更多消息为止。
-  ```shell
+  ```go
   rpc LotsOfReplies(HelloRequest) returns (stream HelloResponse){
   }
   ```
   - 服务端流式 RPC 除了在得到客户端请求信息后发送回一个应答流之外，与我们的简单例子一样。在发送完所有应答后，服务端的状态详情(状态码和可选的状态信息)和可选的跟踪元数据被发送回客户端，以此来完成服务端的工作。客户端在接收到所有服务端的应答后也完成了工作
 - 客户端流式 RPC，即客户端用提供的一个数据流写入并发送一系列消息给服务端。一旦客户端完成消息写入，就等待服务端读取这些消息并返回应答。
-  ```shell
+  ```go
   rpc LotsOfGreetings(stream HelloRequest) returns (HelloResponse) {
   }
   ```
   - 客户端流式 RPC 也基本与我们的简单例子一样，区别在于客户端通过发送一个请求流给服务端，取代了原先发送的单个请求。服务端通常（但并不必须）会在接收到客户端所有的请求后发送回一个应答，其中附带有它的状态详情和可选的跟踪数据。
 - 双向流式 RPC，即两边都可以分别通过一个读写数据流来发送一系列消息。这两个数据流操作是相互独立的，所以客户端和服务端能按其希望的任意顺序读写，例如：服务端可以在写应答前等待所有的客户端消息，或者它可以先读一个消息再写一个消息，或者是读写相结合的其他方式。每个数据流里消息的顺序会被保持。
-  ```shell
+  ```go
   rpc BidiHello(stream HelloRequest) returns (stream HelloResponse){
   }
   ```
@@ -420,7 +420,7 @@ gRPC 允许客户端在调用一个远程方法前指定一个最后期限值。
 ### connectivity/connectivity.go文件
 主要是定义了 **ClientConn** 的状态:
 
-```shell
+```go
 const (
 	// Idle indicates the ClientConn is idle.
 	Idle State = iota
@@ -437,7 +437,7 @@ const (
 
 ### codes定义了gRPC中使用的错误码，这个是跨语言通用的
 
-```shell
+```go
 
 // A Code is an unsigned 32-bit error code as defined in the gRPC spec.
 type Code uint32
@@ -573,7 +573,7 @@ const (
 包credentials实现了几种证书机制提供给gRPC使用，包含了客户端使用的所有的证书验证功能：连接，角色etc...
 
 如下：
-```shell
+```go
 // tlsCreds is the credentials required for authenticating a connection using TLS.
 type tlsCreds struct {
 	// TLS configuration
@@ -602,7 +602,7 @@ tlsCreds
 // This package is EXPERIMENTAL.
 
 ｀encoding｀提供了压缩在网络中要传输的数据，是一个实验性支持的功能
-```shell
+```go
 // Compressor is used for compressing and decompressing when sending or
 // receiving messages.
 type Compressor interface {
@@ -641,7 +641,7 @@ func GetCompressor(name string) Compressor {
 }
 ```
 主要就是Compressor这个接口定义，定义的三个方法，对输入数据输出数据进行压缩或者解压,`Name`用来在用户自己定义自己的`Compressor`时的名称。
-```shell
+```go
 // Codec defines the interface gRPC uses to encode and decode messages.  Note
 // that implementations of this interface must be thread safe; a Codec's
 // methods can be called from concurrent goroutines.
@@ -695,7 +695,7 @@ encoding目录下已经支持了两种方式：
 ## grpclog grpc的日志模块
 
 有logger.go和loggerv2.go两个版本的日志系统，logger.go已经废弃掉(Deprecated),使用loggerv2.go
-```shell
+```go
 type LoggerV2 interface {
 	// Info logs to INFO log. Arguments are handled in the manner of fmt.Print.
 	Info(args ...interface{})
@@ -750,7 +750,7 @@ const (
 ```
 定义通用的日志接口，以及日志等级。
 然后在loggerv2.go这个文件实现了一个默认的日志实现：
-```shell
+```go
 // loggerT is the default logger used by grpclog.
 type loggerT struct {
 	m []*log.Logger
@@ -766,7 +766,7 @@ server中实现　implements `service Health`这些接口，在client.go中根�
 ## keepalive 
 // Package keepalive defines configurable parameters for point-to-point healthcheck.
 keepalive 定义了可配置的用于点对点健康监测的参数
-```shell
+```go
 // ClientParameters is used to set keepalive parameters on the client-side.
 // These configure how the client will actively probe to notice when a
 // connection is broken and send pings so intermediaries will be aware of the
@@ -816,7 +816,7 @@ type ServerParameters struct {
 
 ## metadata 请求中设置的一些元数据参数
 
-```shell
+```go
 // MD is a mapping from metadata keys to values. Users should use the following
 // two convenience functions New and Pairs to generate MD.
 type MD map[string][]string
@@ -831,7 +831,7 @@ type MD map[string][]string
 Package peer defines various peer information associated with RPCs and corresponding utils.
 
 peer包定义了服务节点或者请求节点的一些和RPC相关的参数
-```shell
+```go
 // Peer contains the information of the peer for an RPC, such as the address
 // and authentication information.
 type Peer struct {
@@ -868,7 +868,7 @@ Package stats is for collecting and reporting various network and RPC stats.
 This package is for monitoring purpose only. All fields are read-only.
 All APIs are experimental.
 stats用来收集并报告gRpc的各种信息以及连接的信息
-```shell
+```go
 // RPCStats contains stats information about RPCs.
 type RPCStats interface {
 	isRPCStats()

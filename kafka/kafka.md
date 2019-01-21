@@ -61,6 +61,7 @@ Kafka 通过 Zookeeper 管理集群配置，选举 leader。Producer 使用 push
 Producer采用push模式将消息发布到broker，每条消息都被append到partition，属于顺序写磁盘
 
 producer发送消息到broker时，会根据分区算法将其存储到哪一个partition
+
 * 指定了partition,则直接使用
 * 未指定partition,但指定key，通过对key的 value进行hash 选出一个partition
 * partition和key 都为指定，使用轮询选出一个partition
@@ -80,7 +81,9 @@ producer发送消息到broker时，会根据分区算法将其存储到哪一个
 #### 读取
 **分段**:Kafka 解决查询效率的手段之一是将数据文件分段，比如有 100 条 Message，它们的 offset 是从 0 到 99。假设将数据文件分成 5 段，第一段为 0-19，第二段为 20-39，以此类推，每段放在一个单独的数据文件里面，数据文件以该段中最小的 offset 命名。这样在查找指定 offset 的 Message 的时候，用二分查找就可以定位到该 Message 在哪个段中。
 **索引**:数据文件分段使得可以在一个较小的数据文件中查找对应 offset 的 Message 了，但是这依然需要顺序扫描才能找到对应 offset 的 Message。为了进一步提高查找的效率，Kafka 为每个分段后的数据文件建立了索引文件，文件名与数据文件的名字是一样的，只是文件扩展名为.index。索引文件中包含若干个索引条目，每个条目表示数据文件中一条 Message 的索引。索引包含两个部分，分别为相对 offset 和 position。
+
 **consumer消费**:
+
     1:每一个consumer实例都属于一个consumer group。
     2:每一条消息只会被同一个consumer group里的一个consumer实例消费。
     3:不同consumer group可以同时消费同一条消息。
@@ -91,3 +94,9 @@ producer发送消息到broker时，会根据分区算法将其存储到哪一个
     8:consumer注册到zookeeper
     9:属于同一个group的consumer（group id一样）平均分配partition，每个partition只会被一个consumer消费
     10:当broker或同一个group的其他consumer的状态发生变化的时候，consumer rebalance就会发生
+
+常用命令
+
+```shell
+./kafka-topics.sh --alter --zookeeper zookeeper-default-1.component.svc.cluster.local:2181/kafka  --partitions 64 --topic xxxxxxxx
+```

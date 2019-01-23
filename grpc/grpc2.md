@@ -367,3 +367,129 @@ func newFuncDialOption(f func(*dialOptions)) *funcDialOption {
 `DialOption`这个通用的接口定义,然后通过`funcDialOption`包装一层，这样其它函数构建一个`DialOption`时只需要使用`newFuncDialOption`这个函数生成就好
 
 ![newFuncDialOption.png](newFuncDialOption.png)
+
+## pickerWrapper.go
+
+```go
+// pickerWrapper is a wrapper of balancer.Picker. It blocks on certain pick
+// actions and unblock when there's a picker update.
+type pickerWrapper struct {
+	mu         sync.Mutex
+	done       bool
+	blockingCh chan struct{}
+	picker     balancer.Picker
+
+	// The latest connection happened.
+	connErrMu sync.Mutex
+	connErr   error
+}
+```
+
+`pickerWrapper`是一个实现了`balancer.Picker`的`picker`的包装器，用来对`pick`行为进行管理
+
+见`picker`接口的定义：
+
+```go
+// Picker is used by gRPC to pick a SubConn to send an RPC.
+// Balancer is expected to generate a new picker from its snapshot every time its
+// internal state has changed.
+//
+// The pickers used by gRPC can be updated by ClientConn.UpdateBalancerState().
+type Picker interface {
+	// Pick returns the SubConn to be used to send the RPC.
+	// The returned SubConn must be one returned by NewSubConn().
+	//
+	// This functions is expected to return:
+	// - a SubConn that is known to be READY;
+	// - ErrNoSubConnAvailable if no SubConn is available, but progress is being
+	//   made (for example, some SubConn is in CONNECTING mode);
+	// - other errors if no active connecting is happening (for example, all SubConn
+	//   are in TRANSIENT_FAILURE mode).
+	//
+	// If a SubConn is returned:
+	// - If it is READY, gRPC will send the RPC on it;
+	// - If it is not ready, or becomes not ready after it's returned, gRPC will block
+	//   until UpdateBalancerState() is called and will call pick on the new picker.
+	//
+	// If the returned error is not nil:
+	// - If the error is ErrNoSubConnAvailable, gRPC will block until UpdateBalancerState()
+	// - If the error is ErrTransientFailure:
+	//   - If the RPC is wait-for-ready, gRPC will block until UpdateBalancerState()
+	//     is called to pick again;
+	//   - Otherwise, RPC will fail with unavailable error.
+	// - Else (error is other non-nil error):
+	//   - The RPC will fail with unavailable error.
+	//
+	// The returned done() function will be called once the rpc has finished, with the
+	// final status of that RPC.
+	// done may be nil if balancer doesn't care about the RPC status.
+	Pick(ctx context.Context, opts PickOptions) (conn SubConn, done func(DoneInfo), err error)
+}
+```
+以及对`picker`的所定义的结构列表：
+
+![picker.png](picker.png)
+
+## pickfirst.go
+
+这个文件也是一个picker接口的实现
+
+```go
+func init() {
+	balancer.Register(newPickfirstBuilder())
+}
+```
+在`init`函数中将自己注册到`balancer`中，通过`newPickfirstBuilder`这个函数构建`pickfirstBuilder`,将`ClientConn`传递到`pickfirstBalancer`这个`picker`接口的实现中，然后上层框架使用`HandleResolvedAddrs`和`HandleSubConnStateChange`这两个方法来进行`ClientConn`的状态更新通知
+
+![pickfirst.png](pickfirst.png)
+
+## proxy.go
+
+一个代理服务实现
+
+## resolver_conn_wraper.go
+
+```go
+// ccResolverWrapper is a wrapper on top of cc for resolvers.
+// It implements resolver.ClientConnection interface.
+type ccResolverWrapper struct {
+	cc       *ClientConn
+	resolver resolver.Resolver
+	addrCh   chan []resolver.Address
+	scCh     chan string
+	done     chan struct{}
+}
+```
+`ccResolverWrapper`通过封装`ClientConn`和`resolver.Resolver`的实现结构，而根据`ClientConn`的定义，`ccResolverWrapper`也实现`ClientConn`接口
+
+```go
+// ClientConn contains the callbacks for resolver to notify any updates
+// to the gRPC ClientConn.
+//
+// This interface is to be implemented by gRPC. Users should not need a
+// brand new implementation of this interface. For the situations like
+// testing, the new implementation should embed this interface. This allows
+// gRPC to add new methods to this interface.
+type ClientConn interface {
+	// NewAddress is called by resolver to notify ClientConn a new list
+	// of resolved addresses.
+	// The address list should be the complete list of resolved addresses.
+	NewAddress(addresses []Address)
+	// NewServiceConfig is called by resolver to notify ClientConn a new
+	// service config. The service config should be provided as a json string.
+	NewServiceConfig(serviceConfig string)
+}
+
+```
+`ccResolverWrapper`主要用来将新的地址解析结果通知到实际的`ClientConn`,或者新的服务配置
+```go
+// watcher processes address updates and service config updates sequentially.
+// Otherwise, we need to resolve possible races between address and service
+// config (e.g. they specify different balancer types).
+func (ccr *ccResolverWrapper) watcher() 
+```
+
+
+## rpc_util.go
+
+提供一些辅助的工具函数，像压缩，编解码，matedata的before-after的链式包装函数，最大传输的消息大小，等等这些工具函数实现

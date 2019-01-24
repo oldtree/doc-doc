@@ -600,3 +600,58 @@ type ClientStream interface {
 * `Trailer`
 * `CloseSend`
   
+有些方法默认是提供给grpc的生成的代码来使用的，使用者了解一下就好了
+
+```go
+func (cc *ClientConn) NewStream(ctx context.Context, desc *StreamDesc, method string, opts ...CallOption) (ClientStream, error)
+
+// NewClientStream is a wrapper for ClientConn.NewStream.
+func NewClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, method string, opts ...CallOption) (ClientStream, error) {
+	return cc.NewStream(ctx, desc, method, opts...)
+}
+
+func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, method string, opts ...CallOption) (_ ClientStream, err error)
+```
+
+这个方法将一个`stream`创建完成后并绑定到一个连接上,也是提供给底层的`grpc`生成的代码来使用的：
+```go
+NewClientStream-->(cc *ClientConn) NewStream-->newClientStream
+```
+`ClientStream`接口的具体实现：`clientStream｀
+
+```go
+// clientStream implements a client side Stream.
+type clientStream struct {
+	callHdr  *transport.CallHdr
+	opts     []CallOption
+	callInfo *callInfo
+	cc       *ClientConn
+	desc     *StreamDesc
+
+	codec baseCodec
+	cp    Compressor
+	comp  encoding.Compressor
+
+	cancel context.CancelFunc // cancels all attempts
+
+	sentLast  bool // sent an end stream
+	beginTime time.Time
+
+	methodConfig *MethodConfig
+
+	ctx context.Context // the application's context, wrapped by stats/tracing
+
+	retryThrottler *retryThrottler // The throttler active when the RPC began.
+
+	mu                      sync.Mutex
+	firstAttempt            bool       // if true, transparent retry is valid
+	numRetries              int        // exclusive of transparent retry attempt(s)
+	numRetriesSincePushback int        // retries since pushback; to reset backoff
+	finished                bool       // TODO: replace with atomic cmpxchg or sync.Once?
+	attempt                 *csAttempt // the active client stream attempt
+	// TODO(hedging): hedging will have multiple attempts simultaneously.
+	committed  bool                       // active attempt committed for retry?
+	buffer     []func(a *csAttempt) error // operations to replay on retry
+	bufferSize int                        // current size of buffer
+}
+```

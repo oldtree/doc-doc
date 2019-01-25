@@ -655,3 +655,40 @@ type clientStream struct {
 	bufferSize int                        // current size of buffer
 }
 ```
+
+这个结构体中：
+* `cc *ClientConn` 这个stream使用的连接的接口实现
+* `desc *StreamDesc` 这个RPC接口的描述
+* `attempt *csAttempt` 用来做重试管理的。
+
+```go
+// csAttempt implements a single transport stream attempt within a
+// clientStream.
+type csAttempt struct {
+	cs   *clientStream
+	t    transport.ClientTransport
+	s    *transport.Stream
+	p    *parser
+	done func(balancer.DoneInfo)
+
+	finished  bool
+	dc        Decompressor
+	decomp    encoding.Compressor
+	decompSet bool
+
+	mu sync.Mutex // guards trInfo.tr
+	// trInfo.tr is set when created (if EnableTracing is true),
+	// and cleared when the finish method is called.
+	trInfo traceInfo
+
+	statsHandler stats.Handler
+}
+```
+
+`csAttempt`的定义中，三个成员变量：
+
+
+* `cs *clientStream` 是和这个`csAttempt`绑定的实际的连接
+* `t transport.ClientTransport` 这个是传输层的抽象，类似于`http.Transport`的功能，不过只用来在客户端
+* `s *transport.Stream`　这个是代表一个通用的Stream的结构,用于在`Transport`来对Steam进行管理
+

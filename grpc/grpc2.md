@@ -502,7 +502,7 @@ Deprecated: Users should not use this struct. Service config should be received 
 
 已经废弃的结构定义，再看吧！！！！！
 
-## server.go 
+
 
 ## trace.go
 
@@ -692,3 +692,100 @@ type csAttempt struct {
 * `t transport.ClientTransport` 这个是传输层的抽象，类似于`http.Transport`的功能，不过只用来在客户端
 * `s *transport.Stream`　这个是代表一个通用的Stream的结构,用于在`Transport`来对Steam进行管理
 
+`csAttempt`主要用来在`clientStream`中进行`recv`和`send`操作，在`clientStream`中通过封装过的retry方式，`clientStream`的`recv`和`send`会使用`csAttempt`的`recv`和`send`方法，来进行发送和接收操作。
+
+```go
+// serverStream implements a server side Stream.
+type serverStream struct {
+	ctx   context.Context
+	t     transport.ServerTransport
+	s     *transport.Stream
+	p     *parser
+	codec baseCodec
+
+	cp     Compressor
+	dc     Decompressor
+	comp   encoding.Compressor
+	decomp encoding.Compressor
+
+	maxReceiveMessageSize int
+	maxSendMessageSize    int
+	trInfo                *traceInfo
+
+	statsHandler stats.Handler
+
+	mu sync.Mutex // protects trInfo.tr after the service handler runs.
+}
+```
+在`serverStream`中没有对`ServerTransport`进行封装的`csAttempt`，而是直接使用了`ServerTransport`；
+`Stream`的抽象也使用了`*transport.Stream`这个新定义的接口类型，剩下的就是编解码，压缩－解压缩这些操作所需要的接口了。
+
+`serverStream`实现了`ServerStream`的接口：
+
+![serverStream.png](serverStream.png)
+
+----
+
+## server.go 
+
+在这个文件中，定义了像`Server`,
+
+![serverdefine.png](serverdefine.png)
+
+```go
+type methodHandler func(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor UnaryServerInterceptor) (interface{}, error)
+
+
+// MethodDesc represents an RPC service's method specification.
+type MethodDesc struct {
+	MethodName string
+	Handler    methodHandler
+}
+
+// ServiceDesc represents an RPC service's specification.
+type ServiceDesc struct {
+	ServiceName string
+	// The pointer to the service interface. Used to check whether the user
+	// provided implementation satisfies the interface requirements.
+	HandlerType interface{}
+	Methods     []MethodDesc
+	Streams     []StreamDesc
+	Metadata    interface{}
+}
+
+// service consists of the information of the server serving this service and
+// the methods in this service.
+type service struct {
+	server interface{} // the server for service methods
+	md     map[string]*MethodDesc
+	sd     map[string]*StreamDesc
+	mdata  interface{}
+}
+
+// Server is a gRPC server to serve RPC requests.
+type Server struct {
+	opts options
+
+	mu     sync.Mutex // guards following
+	lis    map[net.Listener]bool
+	conns  map[io.Closer]bool
+	serve  bool
+	drain  bool
+	cv     *sync.Cond          // signaled when connections close for GracefulStop
+	m      map[string]*service // service name -> service info
+	events trace.EventLog
+
+	quit               chan struct{}
+	done               chan struct{}
+	quitOnce           sync.Once
+	doneOnce           sync.Once
+	channelzRemoveOnce sync.Once
+	serveWG            sync.WaitGroup // counts active Serve goroutines for GracefulStop
+
+	channelzID int64 // channelz unique identification number
+	czData     *channelzData
+}
+```
+* `methodHandler`: 处理rpc请求的的方法定义
+* `MethodDesc`: 定义处理一个RPC请求的方法名称以及对应的处理函数`methodHandler`
+* `ServiceDesc`: 描述一个服务的所有可以处理的RPC请求的信息

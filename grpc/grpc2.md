@@ -788,4 +788,126 @@ type Server struct {
 ```
 * `methodHandler`: 处理rpc请求的的方法定义
 * `MethodDesc`: 定义处理一个RPC请求的方法名称以及对应的处理函数`methodHandler`
-* `ServiceDesc`: 描述一个服务的所有可以处理的RPC请求的信息
+* `ServiceDesc`: 描述一个服务的所有可以处理的RPC请求的信息,单仅仅是描述信息
+* `service`: 包含了通用的`MethodDesc` rpc调用映射表,也包含了`StreamDesc` 这种流式rpc调用映射表,这个是描述一个服务所有的提供出去的rpc服务接口
+  
+在`server`中通过这个成员变量`m map[string]*service // service name -> service info`来在和具体的服务映射
+
+```go
+type options struct {
+	creds                 credentials.TransportCredentials
+	codec                 baseCodec
+	cp                    Compressor
+	dc                    Decompressor
+	unaryInt              UnaryServerInterceptor
+	streamInt             StreamServerInterceptor
+	inTapHandle           tap.ServerInHandle
+	statsHandler          stats.Handler
+	maxConcurrentStreams  uint32
+	maxReceiveMessageSize int
+	maxSendMessageSize    int
+	unknownStreamDesc     *StreamDesc
+	keepaliveParams       keepalive.ServerParameters
+	keepalivePolicy       keepalive.EnforcementPolicy
+	initialWindowSize     int32
+	initialConnWindowSize int32
+	writeBufferSize       int
+	readBufferSize        int
+	connectionTimeout     time.Duration
+	maxHeaderListSize     *uint32
+}
+
+var defaultServerOptions = options{
+	maxReceiveMessageSize: defaultServerMaxReceiveMessageSize,
+	maxSendMessageSize:    defaultServerMaxSendMessageSize,
+	connectionTimeout:     120 * time.Second,
+	writeBufferSize:       defaultWriteBufSize,
+	readBufferSize:        defaultReadBufSize,
+}
+
+```
+定义了在这个`server`中的配置选项，以及一个初始化的默认选项
+
+```go
+// MethodInfo contains the information of an RPC including its method name and type.
+type MethodInfo struct {
+	// Name is the method name only, without the service name or package name.
+	Name string
+	// IsClientStream indicates whether the RPC is a client streaming RPC.
+	IsClientStream bool
+	// IsServerStream indicates whether the RPC is a server streaming RPC.
+	IsServerStream bool
+}
+
+// ServiceInfo contains unary RPC method info, streaming RPC method info and metadata for a service.
+type ServiceInfo struct {
+	Methods []MethodInfo
+	// Metadata is the metadata specified in ServiceDesc when registering service.
+	Metadata interface{}
+}
+```
+
+这些描述性的信息，提供给`protoc`所生成的底层代码来使用，通过`MethodInfo`的定义可以看出，需要明确的说明一个rpc服务接口的类型。
+
+```go
+// Serve accepts incoming connections on the listener lis, creating a new
+// ServerTransport and service goroutine for each. The service goroutines
+// read gRPC requests and then call the registered handlers to reply to them.
+// Serve returns when lis.Accept fails with fatal errors.  lis will be closed when
+// this method returns.
+// Serve will return a non-nil error unless Stop or GracefulStop is called.
+func (s *Server) Serve(lis net.Listener) error
+```
+
+这个函数用来接收所有请求然后调用`handleRawConn`函数进行处理，在`handleRawConn`这个函数中，根据所调用的rpc的方法的描述(`MethodInfo.IsClientStream`),再去调用`handleStream`
+
+```go
+// handleRawConn forks a goroutine to handle a just-accepted connection that
+// has not had any I/O performed on it yet.
+func (s *Server) handleRawConn(rawConn net.Conn) {
+    .....
+	rawConn.SetDeadline(time.Time{})
+	if !s.addConn(st) {
+		return
+	}
+	go func() {
+		s.serveStreams(st)
+		s.removeConn(st)
+	}()
+}
+
+func (s *Server) serveStreams(st transport.ServerTransport) {
+	defer st.Close()
+	var wg sync.WaitGroup
+	st.HandleStreams(func(stream *transport.Stream) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.handleStream(st, stream, s.traceInfo(st, stream))
+		}()
+	}, func(ctx context.Context, method string) context.Context {
+		if !EnableTracing {
+			return ctx
+		}
+		tr := trace.New("grpc.Recv."+methodFamily(method), method)
+		return trace.NewContext(ctx, tr)
+	})
+	wg.Wait()
+}
+
+func (s *Server) handleStream(t transport.ServerTransport, stream *transport.Stream, trInfo *traceInfo){
+	......
+	// Unary RPC or Streaming RPC?
+	if md, ok := srv.md[method]; ok {
+		s.processUnaryRPC(t, stream, srv, md, trInfo)
+		return
+	}
+	if sd, ok := srv.sd[method]; ok {
+		s.processStreamingRPC(t, stream, srv, sd, trInfo)
+		return
+	}
+	......
+}
+```
+
+这样才最终调用到`processUnaryRPC`或者`processStreamingRPC`,然后在这两个函数中，类似于处理http请求的handle一样，自行处理`response`写回 。

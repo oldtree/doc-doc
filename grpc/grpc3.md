@@ -415,5 +415,79 @@ type http2Client struct {
 	channelzID int64 // channelz unique identification number
 	czData     *channelzData
 }
+
+......
+// reader runs as a separate goroutine in charge of reading data from network
+// connection.
+//
+// TODO(zhaoq): currently one reader per transport. Investigate whether this is
+// optimal.
+// TODO(zhaoq): Check the validity of the incoming frame sequence.
+func (t *http2Client) reader() {
+	defer close(t.readerDone)
+	// Check the validity of server preface.
+	frame, err := t.framer.fr.ReadFrame()
+	if err != nil {
+		t.Close()
+		return
+	}
+	if t.keepaliveEnabled {
+		atomic.CompareAndSwapUint32(&t.activity, 0, 1)
+	}
+	sf, ok := frame.(*http2.SettingsFrame)
+	if !ok {
+		t.Close()
+		return
+	}
+	t.onSuccess()
+	t.handleSettings(sf, true)
+
+	// loop to keep reading incoming messages on this transport.
+	for {
+		frame, err := t.framer.fr.ReadFrame()
+		if t.keepaliveEnabled {
+			atomic.CompareAndSwapUint32(&t.activity, 0, 1)
+		}
+		if err != nil {
+			// Abort an active stream if the http2.Framer returns a
+			// http2.StreamError. This can happen only if the server's response
+			// is malformed http2.
+			if se, ok := err.(http2.StreamError); ok {
+				t.mu.Lock()
+				s := t.activeStreams[se.StreamID]
+				t.mu.Unlock()
+				if s != nil {
+					// use error detail to provide better err message
+					code := http2ErrConvTab[se.Code]
+					msg := t.framer.fr.ErrorDetail().Error()
+					t.closeStream(s, status.Error(code, msg), true, http2.ErrCodeProtocol, status.New(code, msg), nil, false)
+				}
+				continue
+			} else {
+				// Transport error.
+				t.Close()
+				return
+			}
+		}
+		switch frame := frame.(type) {
+		case *http2.MetaHeadersFrame:
+			t.operateHeaders(frame)
+		case *http2.DataFrame:
+			t.handleData(frame)
+		case *http2.RSTStreamFrame:
+			t.handleRSTStream(frame)
+		case *http2.SettingsFrame:
+			t.handleSettings(frame, false)
+		case *http2.PingFrame:
+			t.handlePing(frame)
+		case *http2.GoAwayFrame:
+			t.handleGoAway(frame)
+		case *http2.WindowUpdateFrame:
+			t.handleWindowUpdate(frame)
+		default:
+			errorf("transport: http2Client.reader got unhandled frame type %v.", frame)
+		}
+	}
+}
 ```
-`http2Client`实现了`ClientTransport`这个定义的接口
+`http2Client`实现了**transport.go**文件中定义的 `ClientTransport`这个定义的接口

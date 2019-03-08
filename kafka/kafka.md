@@ -100,3 +100,55 @@ producer发送消息到broker时，会根据分区算法将其存储到哪一个
 ```shell
 ./kafka-topics.sh --alter --zookeeper zookeeper-default-1.component.svc.cluster.local:2181/kafka  --partitions 64 --topic xxxxxxxx
 ```
+
+----
+
+### kafka常用命令
+
+[https://riptutorial.com/apache-kafka](https://riptutorial.com/apache-kafka)
+
+#### List consumer groups:
+```shell
+kafka-consumer-groups  --bootstrap-server localhost:9092 --list
+```
+#### Describe a consumer-group:
+kafka-consumer-groups  --bootstrap-server localhost:9092 --describe --group hellworld
+
+current-offset is the last committed offset of the consumer instance,
+log-end-offset is the highest offset of the partition (hence, summing this column gives you the total number of messages for the topic)
+lag is the difference between the current consumer offset and the highest offset, hence how far behind the consumer is,
+owner is the client.id of the consumer (if not specified, a default one is displayed).
+
+#### Create a topic
+```shell
+kafka-topics --zookeeper localhost:2181 --create --replication-factor 1 --partitions 1 --topic test-topic
+
+kafka-topics --zookeeper localhost:2181 --list
+```
+
+#### Launch a consumer
+
+```shell
+kafka-console-consumer --bootstrap-server localhost:9092 --topic test-topic
+
+kafka-console-producer --broker-list localhost:9092 --topic test-topic 
+```
+
+#### Stop kafka
+```shell
+kafka-server-stop 
+```
+
+#### Create a replicated topic
+```shell
+kafka-topics --zookeeper localhost:2181 --create --replication-factor 3 --partitions 1 --topic replicated-topic
+```
+`leader` :is the node responsible for all reads and writes for the given partition. Each node will be the leader for a randomly selected portion of the partitions.
+`replicas` :is the list of nodes that replicate the log for this partition regardless of whether they are the leader or even if they are currently alive.
+`isr` :is the set of "in-sync" replicas. This is the subset of the replicas list that is currently alive and caught-up to the leader.
+
+#### delete topic 
+
+```shell
+kafka-topics --zookeeper localhost:2181 --delete --topic test-topic
+```

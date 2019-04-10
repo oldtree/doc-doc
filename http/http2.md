@@ -1,6 +1,18 @@
 ## http２相关 [https://hpbn.co/http2/]
 ## https://hpbn.co/primer-on-latency-and-bandwidth
 
+## HTTP/2
+
+2015 年，继承于 SPDY 的 HTTP/2 协议发布了。HTTP/2 是 HTTP/1 的替代品，但它不是重写，协议中还保留着第一代的一些内容，比如 HTTP 方法、状态码与语义等都与 HTTP/1 一样。
+
+HTTP/2 基于SPDY3，专注于性能，最大的一个目标是在用户和网站间只用一个连接。
+
+HTTP/2 由两个规范组成：
+
+    Hypertext Transfer Protocol version 2 - RFC7540
+    HPACK - Header Compression for HTTP/2 - RFC7541
+
+
 http2是一个二进制的协议,和http1.1的文本协议是不同的,http1.1使用的是ＣＬＲＦ的分割的文本，
 
 
@@ -17,6 +29,11 @@ http2是一个二进制的协议,和http1.1的文本协议是不同的,http1.1�
     - The frame is the smallest unit of communication that carries a specific type of data—e.g., HTTP headers, message payload, and so on. Frames from different streams may be interleaved and then reassembled via the embedded stream identifier in the header of each frame.**frame**　是数据传输单位，包含header,要传输的数据等等．
   
   ![streams.svg](streams.svg)
+```python
+    流（stream）：流是连接中的一个虚拟信道，可以承载双向的消息；每个流都有一个唯一的整数标识符（1、2…N）
+    消息（message）：指逻辑上的 HTTP 消息，比如请求、响应等，由一或多个帧组成
+    帧（frame）：HTTP/2 通信的最小单位，每个帧包含帧首部，至少也会标识出当前帧所属的流，承载着特定类型的数据，如 HTTP 首部、负荷等
+```
 
 --- 
 
@@ -218,3 +235,6 @@ http2带来的一些问题：
 - We have eliminated head-of-line blocking from HTTP, but there is still head-of-line blocking at the TCP level (see Head-of-Line Blocking).
 - Effects of bandwidth-delay product may limit connection throughput if TCP window scaling is disabled.
 - When packet loss occurs, the TCP congestion window size is reduced (see Congestion Avoidance), which reduces the maximum throughput of the entire connection. 
+
+
+

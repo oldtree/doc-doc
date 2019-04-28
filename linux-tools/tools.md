@@ -33,3 +33,10 @@ ELF Header:
   Section header string table index: 9
 
 ```
+
+---
+  需要精准的时间同步，就是使用`ntp`同步，`ntp`也是一种时钟同步协议。它有自己的一套算法，当前相差多少，
+  下次什么时候同步等等，它的这一套算法，可以保证时钟时时刻刻的同步。
+  `ntp`是`linux`的一个服务，配置文件是`/etc/ntp.conf`
+
+---

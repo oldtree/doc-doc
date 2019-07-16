@@ -152,3 +152,15 @@ kafka-topics --zookeeper localhost:2181 --create --replication-factor 3 --partit
 ```shell
 kafka-topics --zookeeper localhost:2181 --delete --topic test-topic
 ```
+
+按照时间重置offset
+```shell
+kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group 
+search-coordinator  --reset-offsets --all-topics --to-datetime 
+2017９-0７-１３T14:30:00.000
+```
+
+查看当前消费组的offset情况
+```shell
+kafka-consumer-groups.sh --bootstrap-server ip:9092 --group search-coordinator --describe
+```
